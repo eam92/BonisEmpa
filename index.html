@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bonificaciones Empapadores</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .flash { animation: flashHighlight 0.4s ease-in-out; }
+    .highlight-final { animation: highlightFinal 2s ease-in-out; }
+    @keyframes flashHighlight { 0% { background-color: #d1fae5; } 100% { background-color: white; } }
+    @keyframes highlightFinal { 0% { background-color: #fef9c3; } 100% { background-color: transparent; } }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <div class="max-w-5xl mx-auto p-6 space-y-8">
+    <section class="bg-purple-50 p-6 rounded-lg shadow-md border border-purple-200">
+      <h2 class="text-2xl font-bold text-center text-purple-700">ABS® Empapadores - Bonificaciones</h2>
+      <p class="text-center text-sm text-gray-600 mb-4">
+        Bonificaciones disponibles: <strong>3+1 y/o 10+6 </strong>
+      </p>
+      <div id="pad-list" class="space-y-4 mb-6"></div>
+      <div id="pad-summary" class="p-4 rounded-lg bg-white shadow">
+        <p>Total ingresado: <span id="pad-units" class="font-semibold">0</span> unidades</p>
+        <p class="text-green-600">Bonificación total: <span id="pad-bonus" class="font-bold">0</span> unidades gratis</p>
+        <p id="pad-total" class="text-2xl font-bold text-purple-700 transition-all mt-2"> Unidades Servidas 0</p>
+        <p class="mt-2 font-semibold text-gray-700">Coste total: <span id="pad-total-cost">0</span> €</p>
+        <p class="text-green-700 font-bold">Ahorro total: <span id="pad-total-savings">0</span> €</p>
+        <div id="pad-breakdown" class="mt-4 text-gray-700 text-sm space-y-2"></div>
+      </div>
+      <div class="mt-10">
+        <img src="img-conocenos.png" alt="ABS fondo" class="mx-auto w-full max-w-md md:max-w-lg object-contain"/>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const empapadores = [
+      { name: "Empapador 60x60", price: 6.40 },
+      { name: "Empapador 60x40", price: 4.41 },
+      { name: "Empapador 60x90", price: 7.50 },
+      { name: "Empapador con alas 90x180", price: 10.20 }
+    ];
+
+    const padList = document.getElementById("pad-list");
+    const padUnits = document.getElementById("pad-units");
+    const padBonus = document.getElementById("pad-bonus");
+    const padTotalSavings = document.getElementById("pad-total-savings");
+    const padTotal = document.getElementById("pad-total");
+    const padTotalCost = document.getElementById("pad-total-cost");
+    const padBreakdown = document.getElementById("pad-breakdown");
+
+    empapadores.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "flex items-center space-x-4 bg-gray-100 p-3 rounded shadow-sm";
+      row.innerHTML = `
+        <label class="flex-1">
+          ${p.name}
+          <span class="block text-sm text-gray-500">PVL: ${p.price.toFixed(2)} €</span>
+        </label>
+        <input type="number" min="0" value="0" data-index="${i}" class="qty-input w-20 text-center p-2 border rounded bg-white"/>
+      `;
+      padList.appendChild(row);
+    });
+
+    padList.addEventListener("input", calcPads);
+
+    function calcPads(e) {
+      const inputs = document.querySelectorAll('#pad-list input');
+      const changedInput = e?.target;
+
+      let totalEntered = 0, totalBonus = 0, totalSavings = 0, totalCost = 0;
+      let breakdownHTML = "", ref10 = [], ref5 = [], ref3 = [];
+
+      const data = empapadores.map((p, i) => {
+        const input = inputs[i];
+        const qty = parseInt(input.value) || 0;
+        if (changedInput === input) {
+          input.classList.add("flash");
+          setTimeout(() => input.classList.remove("flash"), 400);
+        }
+
+        totalEntered += qty;
+        totalCost += p.price * qty;
+
+        if (qty >= 10) ref10.push(i);
+        else if (qty >= 5) ref5.push(i);
+        else if (qty >= 3) ref3.push(i);
+
+        return { index: i, name: p.name, qty, bonus: 0, price: p.price };
+      });
+
+      // Aplicar bonificaciones
+      ref3.forEach(i => data[i].bonus = 1); // 3+1
+      ref5.forEach(i => { if (ref5.length >= 2 || ref10.length >= 1) data[i].bonus = 3; }); // 5+3
+      ref10.forEach(i => data[i].bonus = 6); // 10+6
+
+      // Aplicar 3+1 en una referencia combinada con 10+6 de otra
+      if (ref10.length > 0 && ref3.length > 0) {
+        ref3.forEach(i => data[i].bonus = 1);
+      }
+
+      totalBonus = data.reduce((sum, d) => sum + d.bonus, 0);
+      totalSavings = data.reduce((sum, d) => sum + (d.price * d.bonus), 0);
+
+      breakdownHTML = data.filter(d => d.qty > 0).map(d => `
+          <div class="p-2 border-b">
+            <strong>${d.name}</strong><br>
+            Unidades: ${d.qty}, Bonificadas: ${d.bonus}, Total: ${d.qty + d.bonus}<br>
+            Ahorro por bonificación: -${(d.price * d.bonus).toFixed(2)} €
+          </div>
+        `).join("");
+
+      padUnits.textContent = totalEntered;
+      padBonus.textContent = totalBonus;
+      padTotalSavings.textContent = totalSavings.toFixed(2);
+      padTotalCost.textContent = totalCost.toFixed(2);
+      padTotal.textContent = totalEntered + totalBonus;
+      padBreakdown.innerHTML = breakdownHTML;
+    }
+  </script>
+</body>
+</html>
